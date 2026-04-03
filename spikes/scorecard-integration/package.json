@@ -1,0 +1,22 @@
+{
+  "name": "@projectmodern/spike-scorecard",
+  "version": "0.1.0",
+  "description": "Phase 0: OpenSSF Scorecard + Libraries.io + GitHub API Integration",
+  "type": "module",
+  "bin": {
+    "modern": "./cli.js"
+  },
+  "scripts": {
+    "start": "node api.js",
+    "cli": "node cli.js",
+    "dev": "node --watch api.js",
+    "test": "node test.js"
+  },
+  "dependencies": {
+    "fastify": "^4.26.2",
+    "node-fetch": "^3.3.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1,0 +1,148 @@
+{
+  "name": "project-modern",
+  "displayName": "Project Modern",
+  "description": "Discover and evaluate open source packages with intelligent recommendations",
+  "version": "0.1.0",
+  "publisher": "projectmodern",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other",
+    "Machine Learning",
+    "Programming Languages"
+  ],
+  "keywords": [
+    "dependencies",
+    "packages",
+    "security",
+    "recommendations",
+    "evaluation"
+  ],
+  "activationEvents": [
+    "onLanguage:json",
+    "onCommand:projectModern.search",
+    "workspaceContains:**/package.json"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "projectModern.search",
+        "title": "Search Package",
+        "category": "Project Modern"
+      },
+      {
+        "command": "projectModern.evaluateProject",
+        "title": "Evaluate Project Dependencies",
+        "category": "Project Modern"
+      },
+      {
+        "command": "projectModern.refresh",
+        "title": "Refresh Evaluations",
+        "category": "Project Modern",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "projectModern.openDashboard",
+        "title": "Open Web Dashboard",
+        "category": "Project Modern"
+      },
+      {
+        "command": "projectModern.compare",
+        "title": "Compare Packages",
+        "category": "Project Modern"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "projectModern.search",
+          "when": "true"
+        },
+        {
+          "command": "projectModern.evaluateProject",
+          "when": "workspaceHasPackageJSON"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "projectModern.search",
+          "when": "editorLangId == json",
+          "group": "9_cutcopypaste@5"
+        }
+      ]
+    },
+    "views": {
+      "explorer": [
+        {
+          "id": "projectModern.explorer",
+          "name": "Project Modern",
+          "when": "workspaceHasPackageJSON",
+          "icon": "$(package)"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "projectModern",
+          "title": "Project Modern",
+          "icon": "$(package)"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Project Modern",
+      "properties": {
+        "projectModern.apiUrl": {
+          "type": "string",
+          "default": "http://localhost:3000",
+          "description": "Project Modern API endpoint"
+        },
+        "projectModern.showDiagnostics": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show diagnostics for low-scoring dependencies"
+        },
+        "projectModern.minimumScore": {
+          "type": "number",
+          "default": 6.0,
+          "description": "Minimum acceptable score (0-10)"
+        },
+        "projectModern.cacheEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable caching of evaluation results"
+        }
+      }
+    },
+    "keybindings": [
+      {
+        "command": "projectModern.search",
+        "key": "ctrl+shift+p",
+        "mac": "cmd+shift+p",
+        "when": "editorTextFocus"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.80.0",
+    "@types/node": "16.x",
+    "@typescript-eslint/eslint-plugin": "^5.31.0",
+    "@typescript-eslint/parser": "^5.31.0",
+    "eslint": "^8.20.0",
+    "typescript": "^4.7.4"
+  },
+  "dependencies": {
+    "node-fetch": "^2.6.7"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "@projectmodern/semantic-search",
+  "version": "0.1.0",
+  "description": "Semantic search service with vector embeddings for tool discovery",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "index": "node indexTools.js",
+    "test": "node test.js"
+  },
+  "dependencies": {
+    "fastify": "^4.26.2",
+    "node-fetch": "^3.3.2",
+    "sqlite3": "^5.1.6"
+  }
+}
