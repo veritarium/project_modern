@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
-import { ProjectModernAPI, ToolData } from '../api';
+import * as path from 'node:path';
+import type { ProjectModernAPI, ToolData } from '../api';
 
 export class PackageTreeItem extends vscode.TreeItem {
   constructor(
@@ -14,15 +14,18 @@ export class PackageTreeItem extends vscode.TreeItem {
     if (packageData) {
       const score = packageData.evaluation.composite;
       const icon = score >= 8 ? '$(check)' : score >= 6 ? '$(warning)' : '$(error)';
-      
+
       this.description = `${icon} ${score.toFixed(1)}/10 (${packageData.evaluation.grade})`;
       this.tooltip = `${packageData.name}: ${packageData.evaluation.recommendation}`;
-      
+
       // Set icon based on score
       if (score >= 8) {
         this.iconPath = new vscode.ThemeIcon('check', new vscode.ThemeColor('testing.iconPassed'));
       } else if (score >= 6) {
-        this.iconPath = new vscode.ThemeIcon('warning', new vscode.ThemeColor('testing.iconQueued'));
+        this.iconPath = new vscode.ThemeIcon(
+          'warning',
+          new vscode.ThemeColor('testing.iconQueued')
+        );
       } else {
         this.iconPath = new vscode.ThemeIcon('error', new vscode.ThemeColor('testing.iconFailed'));
       }
@@ -34,8 +37,11 @@ export class PackageTreeItem extends vscode.TreeItem {
 }
 
 export class PackageTreeProvider implements vscode.TreeDataProvider<PackageTreeItem> {
-  private _onDidChangeTreeData: vscode.EventEmitter<PackageTreeItem | undefined | null | void> = new vscode.EventEmitter<PackageTreeItem | undefined | null | void>();
-  readonly onDidChangeTreeData: vscode.Event<PackageTreeItem | undefined | null | void> = this._onDidChangeTreeData.event;
+  private _onDidChangeTreeData: vscode.EventEmitter<
+    PackageTreeItem | undefined | null | undefined
+  > = new vscode.EventEmitter<PackageTreeItem | undefined | null | undefined>();
+  readonly onDidChangeTreeData: vscode.Event<PackageTreeItem | undefined | null | undefined> =
+    this._onDidChangeTreeData.event;
 
   private packageData: Map<string, ToolData> = new Map();
 
@@ -43,7 +49,7 @@ export class PackageTreeProvider implements vscode.TreeDataProvider<PackageTreeI
 
   refresh(): void {
     this.loadPackageData();
-    this._onDidChangeTreeData.fire();
+    this._onDidChangeTreeData.fire(undefined);
   }
 
   getTreeItem(element: PackageTreeItem): vscode.TreeItem {
@@ -73,32 +79,34 @@ export class PackageTreeProvider implements vscode.TreeDataProvider<PackageTreeI
 
     for (const folder of workspaceFolders) {
       const packageJsonPath = path.join(folder.uri.fsPath, 'package.json');
-      
+
       try {
         const packageJson = require(packageJsonPath);
         const allDeps = {
           ...packageJson.dependencies,
-          ...packageJson.devDependencies
+          ...packageJson.devDependencies,
         };
 
         // Summary item
         const depCount = Object.keys(allDeps).length;
-        items.push(new PackageTreeItem(
-          `${folder.name} (${depCount} dependencies)`,
-          vscode.TreeItemCollapsibleState.Expanded
-        ));
+        items.push(
+          new PackageTreeItem(
+            `${folder.name} (${depCount} dependencies)`,
+            vscode.TreeItemCollapsibleState.Expanded
+          )
+        );
 
         // Sort by score (if we have data)
         const depNames = Object.keys(allDeps);
-        
+
         // Load data for all packages
         await this.loadPackageDataForFolder(depNames);
 
         // Create items for each package
         const sortedDeps = depNames
-          .map(name => ({
+          .map((name) => ({
             name,
-            data: this.packageData.get(name)
+            data: this.packageData.get(name),
           }))
           .sort((a, b) => {
             const scoreA = a.data?.evaluation.composite || 0;
@@ -106,38 +114,36 @@ export class PackageTreeProvider implements vscode.TreeDataProvider<PackageTreeI
             return scoreB - scoreA;
           });
 
-        for (const { name, data } of sortedDeps.slice(0, 20)) { // Limit to top 20
+        for (const { name, data } of sortedDeps.slice(0, 20)) {
+          // Limit to top 20
           if (data) {
-            items.push(new PackageTreeItem(
-              name,
-              vscode.TreeItemCollapsibleState.Collapsed,
-              data,
-              {
+            items.push(
+              new PackageTreeItem(name, vscode.TreeItemCollapsibleState.Collapsed, data, {
                 command: 'projectModern.showPackageDetails',
                 title: 'Show Details',
-                arguments: [data]
-              }
-            ));
+                arguments: [data],
+              })
+            );
           } else {
-            items.push(new PackageTreeItem(
-              name,
-              vscode.TreeItemCollapsibleState.None
-            ));
+            items.push(new PackageTreeItem(name, vscode.TreeItemCollapsibleState.None));
           }
         }
 
         if (depNames.length > 20) {
-          items.push(new PackageTreeItem(
-            `... and ${depNames.length - 20} more`,
-            vscode.TreeItemCollapsibleState.None
-          ));
+          items.push(
+            new PackageTreeItem(
+              `... and ${depNames.length - 20} more`,
+              vscode.TreeItemCollapsibleState.None
+            )
+          );
         }
-
-      } catch (error) {
-        items.push(new PackageTreeItem(
-          `${folder.name} (no package.json)`,
-          vscode.TreeItemCollapsibleState.None
-        ));
+      } catch (_error) {
+        items.push(
+          new PackageTreeItem(
+            `${folder.name} (no package.json)`,
+            vscode.TreeItemCollapsibleState.None
+          )
+        );
       }
     }
 
@@ -149,42 +155,51 @@ export class PackageTreeProvider implements vscode.TreeDataProvider<PackageTreeI
     const eval_ = data.evaluation;
 
     // Score breakdown
-    items.push(new PackageTreeItem(
-      `Security: ${eval_.breakdown.security.toFixed(1)}/10`,
-      vscode.TreeItemCollapsibleState.None
-    ));
-    items.push(new PackageTreeItem(
-      `Maintenance: ${eval_.breakdown.maintenance.toFixed(1)}/10`,
-      vscode.TreeItemCollapsibleState.None
-    ));
-    items.push(new PackageTreeItem(
-      `Popularity: ${eval_.breakdown.popularity.toFixed(1)}/10`,
-      vscode.TreeItemCollapsibleState.None
-    ));
-    items.push(new PackageTreeItem(
-      `Ecosystem: ${eval_.breakdown.ecosystem.toFixed(1)}/10`,
-      vscode.TreeItemCollapsibleState.None
-    ));
+    items.push(
+      new PackageTreeItem(
+        `Security: ${eval_.breakdown.security.toFixed(1)}/10`,
+        vscode.TreeItemCollapsibleState.None
+      )
+    );
+    items.push(
+      new PackageTreeItem(
+        `Maintenance: ${eval_.breakdown.maintenance.toFixed(1)}/10`,
+        vscode.TreeItemCollapsibleState.None
+      )
+    );
+    items.push(
+      new PackageTreeItem(
+        `Popularity: ${eval_.breakdown.popularity.toFixed(1)}/10`,
+        vscode.TreeItemCollapsibleState.None
+      )
+    );
+    items.push(
+      new PackageTreeItem(
+        `Ecosystem: ${eval_.breakdown.ecosystem.toFixed(1)}/10`,
+        vscode.TreeItemCollapsibleState.None
+      )
+    );
 
     // Stats
     if (data.sources.github?.stars) {
-      items.push(new PackageTreeItem(
-        `⭐ ${data.sources.github.stars.toLocaleString()} stars`,
-        vscode.TreeItemCollapsibleState.None
-      ));
+      items.push(
+        new PackageTreeItem(
+          `⭐ ${data.sources.github.stars.toLocaleString()} stars`,
+          vscode.TreeItemCollapsibleState.None
+        )
+      );
     }
     if (data.sources.libraries?.dependents) {
-      items.push(new PackageTreeItem(
-        `📦 ${data.sources.libraries.dependents.toLocaleString()} dependents`,
-        vscode.TreeItemCollapsibleState.None
-      ));
+      items.push(
+        new PackageTreeItem(
+          `📦 ${data.sources.libraries.dependents.toLocaleString()} dependents`,
+          vscode.TreeItemCollapsibleState.None
+        )
+      );
     }
 
     // Recommendation
-    items.push(new PackageTreeItem(
-      eval_.recommendation,
-      vscode.TreeItemCollapsibleState.None
-    ));
+    items.push(new PackageTreeItem(eval_.recommendation, vscode.TreeItemCollapsibleState.None));
 
     return items;
   }
@@ -198,10 +213,10 @@ export class PackageTreeProvider implements vscode.TreeDataProvider<PackageTreeI
         const packageJson = require(path.join(folder.uri.fsPath, 'package.json'));
         const allDeps = {
           ...packageJson.dependencies,
-          ...packageJson.devDependencies
+          ...packageJson.devDependencies,
         };
         await this.loadPackageDataForFolder(Object.keys(allDeps));
-      } catch (error) {
+      } catch (_error) {
         // Ignore
       }
     }
@@ -220,7 +235,7 @@ export class PackageTreeProvider implements vscode.TreeDataProvider<PackageTreeI
               if (data) {
                 this.packageData.set(name, data);
               }
-            } catch (error) {
+            } catch (_error) {
               // Ignore errors for individual packages
             }
           }

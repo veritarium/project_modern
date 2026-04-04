@@ -1,6 +1,6 @@
 /**
  * Vector Database for Semantic Search
- * 
+ *
  * Uses SQLite with JSON extension for storing embeddings.
  * In production, use a proper vector database like:
  * - Pinecone
@@ -21,9 +21,9 @@ let db = null;
 export async function initDatabase(dbPath = './semantic_search.db') {
   db = await sqlite.open({
     filename: dbPath,
-    driver: sqlite3.Database
+    driver: sqlite3.Database,
   });
-  
+
   // Create tables
   await db.exec(`
     CREATE TABLE IF NOT EXISTS tools (
@@ -51,7 +51,7 @@ export async function initDatabase(dbPath = './semantic_search.db') {
       timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `);
-  
+
   console.log('✅ Database initialized');
   return db;
 }
@@ -61,19 +61,26 @@ export async function initDatabase(dbPath = './semantic_search.db') {
  */
 export async function upsertTool(tool) {
   const { name, platform, description, keywords, embedding, score, metadata } = tool;
-  
-  const existing = await db.get(
-    'SELECT id FROM tools WHERE name = ? AND platform = ?',
-    [name, platform]
-  );
-  
+
+  const existing = await db.get('SELECT id FROM tools WHERE name = ? AND platform = ?', [
+    name,
+    platform,
+  ]);
+
   if (existing) {
     // Update
     await db.run(
       `UPDATE tools 
        SET description = ?, keywords = ?, embedding = ?, score = ?, metadata = ?, updated_at = CURRENT_TIMESTAMP
        WHERE id = ?`,
-      [description, JSON.stringify(keywords), JSON.stringify(embedding), score, JSON.stringify(metadata), existing.id]
+      [
+        description,
+        JSON.stringify(keywords),
+        JSON.stringify(embedding),
+        score,
+        JSON.stringify(metadata),
+        existing.id,
+      ]
     );
     return existing.id;
   } else {
@@ -81,7 +88,15 @@ export async function upsertTool(tool) {
     const result = await db.run(
       `INSERT INTO tools (name, platform, description, keywords, embedding, score, metadata)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [name, platform, description, JSON.stringify(keywords), JSON.stringify(embedding), score, JSON.stringify(metadata)]
+      [
+        name,
+        platform,
+        description,
+        JSON.stringify(keywords),
+        JSON.stringify(embedding),
+        score,
+        JSON.stringify(metadata),
+      ]
     );
     return result.lastID;
   }
@@ -92,7 +107,7 @@ export async function upsertTool(tool) {
  */
 export async function getAllTools() {
   const rows = await db.all('SELECT * FROM tools ORDER BY score DESC');
-  return rows.map(row => ({
+  return rows.map((row) => ({
     id: row.id,
     name: row.name,
     platform: row.platform,
@@ -102,7 +117,7 @@ export async function getAllTools() {
     score: row.score,
     metadata: JSON.parse(row.metadata || '{}'),
     createdAt: row.created_at,
-    updatedAt: row.updated_at
+    updatedAt: row.updated_at,
   }));
 }
 
@@ -111,11 +126,10 @@ export async function getAllTools() {
  */
 export async function getToolsByPlatform(platform) {
   const { deserializeEmbedding } = await import('./embeddings.js');
-  const rows = await db.all(
-    'SELECT * FROM tools WHERE platform = ? ORDER BY score DESC',
-    [platform]
-  );
-  return rows.map(row => ({
+  const rows = await db.all('SELECT * FROM tools WHERE platform = ? ORDER BY score DESC', [
+    platform,
+  ]);
+  return rows.map((row) => ({
     id: row.id,
     name: row.name,
     platform: row.platform,
@@ -123,7 +137,7 @@ export async function getToolsByPlatform(platform) {
     keywords: JSON.parse(row.keywords || '[]'),
     embedding: deserializeEmbedding(row.embedding),
     score: row.score,
-    metadata: JSON.parse(row.metadata || '{}')
+    metadata: JSON.parse(row.metadata || '{}'),
   }));
 }
 
@@ -131,13 +145,10 @@ export async function getToolsByPlatform(platform) {
  * Get a single tool
  */
 export async function getTool(name, platform) {
-  const row = await db.get(
-    'SELECT * FROM tools WHERE name = ? AND platform = ?',
-    [name, platform]
-  );
-  
+  const row = await db.get('SELECT * FROM tools WHERE name = ? AND platform = ?', [name, platform]);
+
   if (!row) return null;
-  
+
   return {
     id: row.id,
     name: row.name,
@@ -146,7 +157,7 @@ export async function getTool(name, platform) {
     keywords: JSON.parse(row.keywords || '[]'),
     embedding: deserializeEmbedding(row.embedding),
     score: row.score,
-    metadata: JSON.parse(row.metadata || '{}')
+    metadata: JSON.parse(row.metadata || '{}'),
   };
 }
 
@@ -161,8 +172,8 @@ export async function searchByKeyword(keyword) {
      LIMIT 20`,
     [`%${keyword}%`, `%${keyword}%`, `%${keyword}%`]
   );
-  
-  return rows.map(row => ({
+
+  return rows.map((row) => ({
     id: row.id,
     name: row.name,
     platform: row.platform,
@@ -170,7 +181,7 @@ export async function searchByKeyword(keyword) {
     keywords: JSON.parse(row.keywords || '[]'),
     embedding: deserializeEmbedding(row.embedding),
     score: row.score,
-    metadata: JSON.parse(row.metadata || '{}')
+    metadata: JSON.parse(row.metadata || '{}'),
   }));
 }
 
@@ -178,10 +189,11 @@ export async function searchByKeyword(keyword) {
  * Log a search query
  */
 export async function logQuery(query, embedding, resultsCount) {
-  await db.run(
-    'INSERT INTO search_queries (query, embedding, results_count) VALUES (?, ?, ?)',
-    [query, embedding ? JSON.stringify(embedding) : null, resultsCount]
-  );
+  await db.run('INSERT INTO search_queries (query, embedding, results_count) VALUES (?, ?, ?)', [
+    query,
+    embedding ? JSON.stringify(embedding) : null,
+    resultsCount,
+  ]);
 }
 
 /**
@@ -202,10 +214,7 @@ export async function getPopularQueries(limit = 10) {
  * Delete a tool
  */
 export async function deleteTool(name, platform) {
-  await db.run(
-    'DELETE FROM tools WHERE name = ? AND platform = ?',
-    [name, platform]
-  );
+  await db.run('DELETE FROM tools WHERE name = ? AND platform = ?', [name, platform]);
 }
 
 /**
@@ -216,12 +225,12 @@ export async function getStats() {
   const totalPlatforms = await db.get('SELECT COUNT(DISTINCT platform) as count FROM tools');
   const avgScore = await db.get('SELECT AVG(score) as avg FROM tools');
   const totalQueries = await db.get('SELECT COUNT(*) as count FROM search_queries');
-  
+
   return {
     totalTools: totalTools.count,
     totalPlatforms: totalPlatforms.count,
     averageScore: avgScore.avg || 0,
-    totalQueries: totalQueries.count
+    totalQueries: totalQueries.count,
   };
 }
 

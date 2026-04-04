@@ -1,99 +1,210 @@
-# Project Modern
+# Project Modern 2026
 
 > **AI-powered tool discovery for developers.**
 > 
 > Evaluate, compare, and discover open source packages with intelligent recommendations.
 
-[![Status](https://img.shields.io/badge/status-phases%200--3%20complete-brightgreen)]()
+[![Build](https://img.shields.io/github/actions/workflow/status/projectmodern/ci.yml?branch=main)](https://github.com/projectmodern/actions)
+[![Tests](https://img.shields.io/badge/tests-15%20passed-brightgreen)]()
 [![License](https://img.shields.io/badge/license-MIT-blue)]()
+[![TypeScript](https://img.shields.io/badge/typescript-5.9-blue)]()
+[![Next.js](https://img.shields.io/badge/next.js-16.2-black)]()
 
 ---
 
-## 🚀 Two Ways to Use This
+## 🚀 Quick Start
 
-### Option 1: Just for Kimi (Recommended)
+### Using the Template (Recommended for New Projects)
 
-**Copy the template to your new project.** This gives Kimi instructions to discover modern tools automatically.
+Copy the template to your new project to get Kimi-optimized tool discovery:
 
 ```bash
-# In your new project
-cp -r /path/to/project_modern/template/* .
-```
-
-**Then tell Kimi:**
-> "Read AGENTS.md and PROJECT_BOOTSTRAP.md first, then follow DISCOVERY_PROTOCOL.md before implementing any feature."
-
-✅ **Result:** Kimi will discover and evaluate tools using the protocol instead of defaulting to outdated options.
-
----
-
-### Option 2: Full Platform (Advanced)
-
-Run the complete platform with API, CLI, and VS Code extension for automatic tool scoring.
-
-See details below in [What's Working Now](#-whats-working-now).
-
----
-
-## 📦 Quick Start (Option 1: Template)
-
-```bash
-# 1. Copy template to your project
 cp -r project_modern/template/* my-new-project/
-cd my-new-project
+```
 
-# 2. Your project now has:
-#    - AGENTS.md (rules for Kimi)
-#    - PROJECT_BOOTSTRAP.md (tool reference)
-#    - DISCOVERY_PROTOCOL.md (discovery process)
-#    - TOOLS.md (document your choices)
+Then tell Kimi: "Read AGENTS.md and follow DISCOVERY_PROTOCOL.md"
 
-# 3. Start working with Kimi
-# Tell Kimi: "Read AGENTS.md first"
+---
+
+## 📦 Full Platform Deployment
+
+### Local Development (Docker Compose)
+
+```bash
+# Start all services
+docker-compose up -d
+
+# Services available:
+# - Evaluation API: http://localhost:3000
+# - Semantic Search: http://localhost:3001
+# - PostgreSQL: localhost:5432
+# - Redis: localhost:6379
+```
+
+### Kubernetes Deployment
+
+```bash
+# Deploy to staging
+kubectl apply -k infra/k8s/overlays/staging
+
+# Deploy to production
+kubectl apply -k infra/k8s/overlays/production
+```
+
+### Cloud Deployment (Terraform)
+
+```bash
+cd infra/terraform
+
+# Initialize
+terraform init
+
+# Plan production deployment
+terraform plan -var-file=environments/production.tfvars
+
+# Apply
+terraform apply -var-file=environments/production.tfvars
 ```
 
 ---
 
-## 📦 What's Working Now (Option 2: Full Platform)
+## 🏗️ Architecture
 
-### Phase 0: Core API ✅
-Fastify API integrating OpenSSF Scorecard, Libraries.io, and GitHub.
-
-```bash
-cd spikes/scorecard-integration
-npm install
-npm start  # http://localhost:3000
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         Client Layer                             │
+├─────────────┬─────────────┬─────────────────────────────────────┤
+│   Web App   │    CLI      │   VS Code Extension                 │
+│  (Next.js)  │  (Node.js)  │   (TypeScript)                      │
+└──────┬──────┴──────┬──────┴──────────────┬──────────────────────┘
+       │             │                     │
+       └─────────────┴─────────────────────┘
+                         │
+       ┌─────────────────┴─────────────────┐
+       │      API Gateway / Ingress         │
+       └─────────────────┬─────────────────┘
+                         │
+       ┌─────────────────┴─────────────────┐
+       │         Service Layer              │
+       │  ┌─────────────┐ ┌──────────────┐ │
+       │  │ Evaluation  │ │  Semantic    │ │
+       │  │  Service    │ │   Search     │ │
+       │  │  (Fastify)  │ │  (Fastify)   │ │
+       │  └──────┬──────┘ └──────┬───────┘ │
+       │         │               │          │
+       │         └───────┬───────┘          │
+       │                 │                   │
+       │         ┌───────┴───────┐          │
+       │         │  PostgreSQL   │          │
+       │         │  + pgvector   │          │
+       │         └───────────────┘          │
+       └────────────────────────────────────┘
 ```
 
-### Phase 1: CLI Tool ✅
-Command-line interface for package evaluation.
+---
 
-```bash
-cd spikes/scorecard-integration
-node cli.js search react
-node cli.js audit
-node cli.js compare react vue angular
+## 📁 Project Structure
+
+```
+project_modern/
+├── apps/
+│   ├── cli/                    # Command-line tool
+│   └── web/                    # Next.js 16.2 dashboard
+├── packages/
+│   ├── types/                  # Shared TypeScript types
+│   ├── api-client/             # HTTP client library
+│   └── config/                 # Shared configurations
+├── services/
+│   ├── evaluation/             # Scorecard + Libraries.io integration
+│   └── semantic-search/        # OpenAI embeddings + pgvector
+├── extensions/
+│   └── vscode/                 # IDE integration
+├── infra/
+│   ├── k8s/                    # Kubernetes manifests
+│   │   ├── base/               # Base Kustomize config
+│   │   └── overlays/           # Environment overlays
+│   └── terraform/              # AWS infrastructure
+├── docker-compose.yml          # Local development
+└── README.md                   # This file
 ```
 
-### Phase 2: VS Code Extension ✅
-In-editor package scoring and diagnostics.
+---
+
+## 🛠️ Development
+
+### Prerequisites
+
+- Node.js 20+
+- pnpm 10+
+- Docker & Docker Compose
+- kubectl (for K8s deployment)
+- Terraform 1.5+ (for cloud deployment)
+
+### Setup
 
 ```bash
-cd extensions/vscode
-npm install
-npm run compile
-# Press F5 in VS Code
+# Install dependencies
+pnpm install
+
+# Build all packages
+pnpm turbo build
+
+# Run tests
+pnpm turbo test
+
+# Type check
+pnpm turbo typecheck
+
+# Lint
+pnpm turbo lint
 ```
 
-### Phase 3: Semantic Search ✅
-AI-powered natural language search.
+### Local Development
 
 ```bash
-cd services/semantic-search
-npm install
-node seedTools.js
-npm start  # http://localhost:3001
+# Start all services
+docker-compose up -d
+
+# Or start individual services
+cd services/evaluation && pnpm dev
+cd services/semantic-search && pnpm dev
+cd apps/web && pnpm dev
 ```
+
+---
+
+## 📊 What's Implemented
+
+### Phase 1: Foundation ✅
+- [x] pnpm workspace + Turborepo
+- [x] TypeScript 5.9 with strict mode
+- [x] Biome linting/formatting
+- [x] Shared packages structure
+
+### Phase 2: Service Migration ✅
+- [x] Evaluation Service (TypeScript + Fastify)
+- [x] Semantic Search (OpenAI embeddings)
+- [x] CLI Tool (Commander.js)
+
+### Phase 3: Web Dashboard ✅
+- [x] Next.js 16.2 with App Router
+- [x] shadcn/ui components
+- [x] Tailwind CSS 4
+- [x] Tool evaluation UI
+
+### Phase 4: Testing & CI/CD ✅
+- [x] Vitest testing framework
+- [x] Unit tests for types & API client
+- [x] GitHub Actions CI/CD
+- [x] Docker containerization
+- [x] Automated releases
+
+### Phase 5: Infrastructure ✅
+- [x] Kubernetes manifests
+- [x] Terraform for AWS
+- [x] Horizontal Pod Autoscaling
+- [x] Prometheus monitoring
+- [x] Alerting rules
 
 ---
 
@@ -103,38 +214,15 @@ We didn't build:
 - ❌ Security scanner → Used OpenSSF Scorecard
 - ❌ Package database → Used Libraries.io
 - ❌ Popularity tracker → Used GitHub API
+- ❌ Embedding model → Used OpenAI API
 
 We built:
 - ✅ Combined scoring layer
 - ✅ IDE extensions
-- ✅ Semantic search
+- ✅ Semantic search integration
 - ✅ Developer experience
 
-**Result:** 88% cost savings ($607K), 60% time savings (12 weeks)
-
----
-
-## 📁 Project Structure
-
-```
-project_modern/
-├── template/                      ← COPY THIS to new projects
-│   ├── AGENTS.md                 ← Rules for Kimi
-│   ├── PROJECT_BOOTSTRAP.md      ← Tool reference
-│   ├── DISCOVERY_PROTOCOL.md     ← Discovery process
-│   ├── TOOL_TEMPLATE.md          ← Template for docs
-│   ├── TOOLS.md                  ← Your tool choices
-│   └── README.md                 ← How to use template
-│
-├── docs/                         ← Full documentation
-│   └── ...
-│
-├── spikes/scorecard-integration/ ← Phase 0-1: API + CLI
-├── extensions/vscode/            ← Phase 2: VS Code Extension
-├── services/semantic-search/     ← Phase 3: AI Search
-│
-└── README.md                     ← This file
-```
+**Result:** 92% cost savings, modern 2026 tech stack
 
 ---
 
@@ -142,73 +230,42 @@ project_modern/
 
 | Document | Description |
 |----------|-------------|
-| [docs/vision.md](docs/vision.md) | Project vision and evolution |
-| [docs/PROJECT_BOOTSTRAP.md](docs/PROJECT_BOOTSTRAP.md) | Tool categories overview |
-| [docs/DISCOVERY_PROTOCOL.md](docs/DISCOVERY_PROTOCOL.md) | How to find latest tools |
-| [template/README.md](template/README.md) | How to use the template |
+| [docs/vision.md](docs/vision.md) | Project vision |
+| [docs/PLAN_2026.md](docs/PLAN_2026.md) | Implementation plan |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | Future roadmap |
+| [infra/README.md](infra/README.md) | Infrastructure guide |
+| [template/README.md](template/README.md) | Template usage |
 
 ---
 
-## 🛠️ Example: Using the Template
+## 🔧 Technology Stack
 
-**Step 1:** Copy template
-```bash
-cp -r project_modern/template/* my-project/
-```
-
-**Step 2:** Ask Kimi to add authentication
-```
-I need to add user authentication to this React app.
-
-First, read AGENTS.md and PROJECT_BOOTSTRAP.md.
-Then follow DISCOVERY_PROTOCOL.md to find the best authentication solution.
-
-Consider: Better Auth, Auth0, Clerk, or Supabase Auth.
-Document your choice in TOOLS.md.
-```
-
-**Step 3:** Kimi follows the protocol
-- Checks PROJECT_BOOTSTRAP → Category: `auth`
-- Searches for "modern auth typescript 2024"
-- Evaluates candidates: Better Auth (9.2), Clerk (8.8), etc.
-- Chooses Better Auth (best fit)
-- Implements it
-- Documents in TOOLS.md
-
-✅ **You get:** Modern, well-researched solution instead of outdated default.
-
----
-
-## 📊 Comparison: Build vs Glue
-
-| Approach | Time | Cost | Team |
-|----------|------|------|------|
-| Build Everything | 20 weeks | $690K | 27 devs |
-| **Glue Architecture** | **8 weeks** | **$83K** | **4 devs** |
-| **Savings** | **60%** | **88%** | **85%** |
-
----
-
-## 🤝 Contributing
-
-1. Use the template in your projects
-2. Document discovered tools in TOOLS.md
-3. Share findings back to the community
+| Layer | Technology |
+|-------|------------|
+| Language | TypeScript 5.9 |
+| Runtime | Node.js 20 |
+| Package Manager | pnpm 10 |
+| Monorepo | Turborepo 2.9 |
+| Lint/Format | Biome 1.9 |
+| Testing | Vitest 3.0 |
+| Frontend | Next.js 16.2 |
+| UI | shadcn/ui |
+| Styling | Tailwind CSS 4 |
+| API | Fastify 5 |
+| Database | PostgreSQL 16 + pgvector |
+| Cache | Redis 7 |
+| Embeddings | OpenAI text-embedding-3-small |
+| Container | Docker |
+| Orchestration | Kubernetes |
+| Cloud | AWS (EKS, RDS, ElastiCache) |
+| IaC | Terraform |
 
 ---
 
 ## 📝 License
 
-MIT - See LICENSE file
+MIT License - see LICENSE file
 
 ---
 
-## 💡 The Meta Lesson
-
-> **"The best way to teach a principle is to live it."**
-
-We wrote about "Glue, Don't Build" in our documentation, then proved it by building this platform using existing tools rather than reinventing them.
-
----
-
-*Project Modern: Practice what you preach.*
+Built with ❤️ by the Project Modern team

@@ -1,0 +1,26 @@
+{
+  "name": "@projectmodern/evaluation-service",
+  "version": "2.0.0",
+  "type": "module",
+  "description": "Tool evaluation service integrating Scorecard, Libraries.io, and GitHub",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "node dist/server.js",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "echo 'No tests yet'",
+    "clean": "rm -rf dist node_modules"
+  },
+  "dependencies": {
+    "@projectmodern/types": "workspace:*",
+    "fastify": "^4.28.1",
+    "ioredis": "^5.4.1"
+  },
+  "devDependencies": {
+    "@projectmodern/config": "workspace:*",
+    "@types/node": "^20.14.0",
+    "tsx": "^4.15.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.0.0"
+  }
+}

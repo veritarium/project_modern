@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: project-modern
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - secrets.yaml
+  - postgres.yaml
+  - redis.yaml
+  - evaluation-service.yaml
+  - semantic-search-service.yaml
+
+commonLabels:
+  app.kubernetes.io/part-of: project-modern
+  app.kubernetes.io/managed-by: kustomize

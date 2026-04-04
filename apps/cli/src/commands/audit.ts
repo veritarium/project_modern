@@ -1,0 +1,216 @@
+/**
+ * Audit Command
+ */
+
+import { readFileSync, existsSync } from 'node:fs';
+import { resolve } from 'node:path';
+import type { ProjectModernClient } from '@projectmodern/api-client';
+import { formatScore, formatGrade, printHeader, printError, printSuccess } from '../utils.js';
+import pc from 'picocolors';
+
+interface AuditOptions {
+  path?: string;
+  report?: boolean;
+  output?: string;
+}
+
+interface AuditResult {
+  name: string;
+  version: string | undefined;
+  score: number | null;
+  grade: string;
+  recommendation: string | undefined;
+  error?: string;
+}
+
+export async function auditCommand(
+  client: ProjectModernClient,
+  options: AuditOptions
+): Promise<number> {
+  const packageJsonPath = resolve(options.path || 'package.json');
+
+  if (!existsSync(packageJsonPath)) {
+    printError(`Cannot find package.json at ${packageJsonPath}`);
+    console.log('Usage: modern audit [--path ./path/to/package.json]');
+    return 1;
+  }
+
+  console.log(`📦 Auditing ${pc.cyan(packageJsonPath)}...\n`);
+
+  try {
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
+    const dependencies: Record<string, string> = {
+      ...packageJson.dependencies,
+      ...packageJson.devDependencies,
+    };
+
+    const depNames = Object.keys(dependencies);
+
+    if (depNames.length === 0) {
+      console.log(pc.yellow('No dependencies found in package.json'));
+      return 0;
+    }
+
+    console.log(`Found ${pc.bold(depNames.length.toString())} dependencies. Evaluating...\n`);
+
+    const results: AuditResult[] = [];
+    const platform = 'npm';
+
+    // Evaluate each dependency
+    for (let i = 0; i < depNames.length; i++) {
+      const name = depNames[i]!;
+      const version = dependencies[name] ?? 'unknown';
+
+      process.stdout.write(`[${i + 1}/${depNames.length}] ${name}... `);
+
+      try {
+        const response = await client.evaluateTool(platform, name);
+        const score = response.tool?.score;
+        results.push({
+          name,
+          version,
+          score: score?.overall ?? null,
+          grade: score?.grade ?? '?',
+          recommendation: score?.recommendation,
+        });
+        process.stdout.write(`${formatScore(score?.overall ?? null)}\n`);
+      } catch (error) {
+        results.push({
+          name,
+          version,
+          score: null,
+          grade: '?',
+          recommendation: undefined,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+        process.stdout.write(pc.red('ERROR\n'));
+      }
+    }
+
+    // Summary
+    printHeader('AUDIT SUMMARY');
+
+    const evaluated = results.filter((r) => r.score !== null);
+    const averageScore = evaluated.reduce((sum, r) => sum + (r.score || 0), 0) / evaluated.length;
+
+    console.log(`\n📊 Overall Score: ${formatScore(averageScore)}`);
+    console.log(`📦 Dependencies Evaluated: ${evaluated.length}/${depNames.length}`);
+
+    // Grade distribution
+    const grades: Record<string, number> = { A: 0, B: 0, C: 0, D: 0, F: 0, '?': 0 };
+    for (const r of results) {
+      grades[r.grade] = (grades[r.grade] || 0) + 1;
+    }
+
+    console.log(`\n🎓 Grade Distribution:`);
+    for (const [grade, count] of Object.entries(grades).filter(([_, c]) => c > 0)) {
+      const colorFn =
+        grade === 'A' ? pc.green : grade === 'B' || grade === 'C' ? pc.yellow : pc.red;
+      console.log(`   ${formatGrade(grade)}: ${count} packages`);
+    }
+
+    // Issues
+    const issues = results.filter((r) => r.score !== null && r.score < 6);
+    if (issues.length > 0) {
+      console.log(`\n⚠️  ${pc.yellow('Packages needing attention:')}`);
+      for (const r of issues) {
+        console.log(`   ${pc.red('❌')} ${r.name}@${r.version}: ${formatScore(r.score)}`);
+      }
+    }
+
+    // Top packages
+    const topPackages = results
+      .filter((r) => r.score !== null)
+      .sort((a, b) => (b.score || 0) - (a.score || 0))
+      .slice(0, 5);
+
+    console.log(`\n🏆 ${pc.green('Top Packages:')}`);
+    for (let i = 0; i < topPackages.length; i++) {
+      const r = topPackages[i];
+      if (r) {
+        console.log(`   ${i + 1}. ${r.name}: ${formatScore(r.score)}`);
+      }
+    }
+
+    console.log();
+
+    // Generate report if requested
+    if (options.report) {
+      await generateReport(results, packageJson, options.output);
+    }
+
+    return 0;
+  } catch (error) {
+    printError(error instanceof Error ? error.message : 'Unknown error');
+    return 1;
+  }
+}
+
+async function generateReport(
+  results: AuditResult[],
+  packageJson: { name?: string },
+  outputPath = 'TOOLS.md'
+): Promise<void> {
+  const evaluated = results.filter((r) => !r.error);
+  const averageScore = evaluated.reduce((sum, r) => sum + (r.score || 0), 0) / evaluated.length;
+
+  const gradeCount = (grade: string) => evaluated.filter((r) => r.grade === grade).length;
+
+  const report = `# Project Analysis Report
+
+Generated by Project Modern CLI
+Date: ${new Date().toISOString().split('T')[0]}
+
+## 📊 Summary
+
+- **Project:** ${packageJson.name || 'Unnamed Project'}
+- **Overall Score:** ${averageScore.toFixed(1)}/10
+- **Dependencies Evaluated:** ${evaluated.length}/${results.length}
+
+## 🎓 Grade Distribution
+
+| Grade | Count |
+|-------|-------|
+| A | ${gradeCount('A')} |
+| B | ${gradeCount('B')} |
+| C | ${gradeCount('C')} |
+| D | ${gradeCount('D')} |
+| F | ${gradeCount('F')} |
+
+## 📦 Dependencies
+
+| Package | Version | Score | Grade | Status |
+|---------|---------|-------|-------|--------|
+${evaluated
+  .map((r) => {
+    const status = r.score && r.score >= 8 ? '✅' : r.score && r.score >= 6 ? '⚠️' : '❌';
+    return `| ${r.name} | ${r.version} | ${r.score?.toFixed(1) || 'N/A'} | ${r.grade} | ${status} |`;
+  })
+  .join('\n')}
+
+## ⚠️ Packages Needing Attention
+
+${
+  evaluated
+    .filter((r) => r.score && r.score < 6)
+    .map((r) => `- **${r.name}** (${r.score?.toFixed(1)}/10): ${r.recommendation || ''}`)
+    .join('\n') || '*None - all packages score above 6.0*'
+}
+
+## 🏆 Top Packages
+
+${evaluated
+  .sort((a, b) => (b.score || 0) - (a.score || 0))
+  .slice(0, 5)
+  .map((r, i) => `${i + 1}. **${r.name}** - ${r.score?.toFixed(1) || 'N/A'}/10`)
+  .join('\n')}
+
+---
+
+*This report was generated by Project Modern. For more details, visit http://localhost:3000*
+`;
+
+  const { writeFileSync } = await import('node:fs');
+  writeFileSync(outputPath, report);
+  printSuccess(`Report saved to ${outputPath}`);
+}

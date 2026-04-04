@@ -57,7 +57,9 @@ export class ProjectModernAPI {
   private cacheTtl = 60 * 60 * 1000; // 1 hour
 
   private get apiUrl(): string {
-    return vscode.workspace.getConfiguration('projectModern').get('apiUrl') || 'http://localhost:3000';
+    return (
+      vscode.workspace.getConfiguration('projectModern').get('apiUrl') || 'http://localhost:3000'
+    );
   }
 
   private getCacheKey(platform: string, name: string): string {
@@ -88,7 +90,7 @@ export class ProjectModernAPI {
 
     try {
       const response = await fetch(`${this.apiUrl}/tools/${platform}/${name}`, {
-        timeout: 10000
+        timeout: 10000,
       });
 
       if (!response.ok) {
@@ -99,22 +101,24 @@ export class ProjectModernAPI {
       }
 
       const data = await response.json();
-      
+
       // Cache the result
       this.setCached(platform, name, data);
-      
+
       return data;
     } catch (error) {
       console.error(`Project Modern API error: ${error}`);
-      
+
       // Check if it's a connection error
-      if (error.message?.includes('ECONNREFUSED') || error.message?.includes('fetch failed')) {
+      if (
+        error instanceof Error &&
+        (error.message?.includes('ECONNREFUSED') || error.message?.includes('fetch failed'))
+      ) {
         throw new Error(
-          `Cannot connect to Project Modern API at ${this.apiUrl}. ` +
-          `Make sure the API server is running.`
+          `Cannot connect to Project Modern API at ${this.apiUrl}. Make sure the API server is running.`
         );
       }
-      
+
       return null;
     }
   }
@@ -125,7 +129,7 @@ export class ProjectModernAPI {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tools }),
-        timeout: 30000
+        timeout: 30000,
       });
 
       if (!response.ok) {

@@ -1,0 +1,28 @@
+{
+  "name": "@projectmodern/api-client",
+  "version": "2.0.0",
+  "type": "module",
+  "description": "Typed API client for Project Modern",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "clean": "rm -rf dist node_modules"
+  },
+  "dependencies": {
+    "@projectmodern/types": "workspace:*"
+  },
+  "devDependencies": {
+    "@projectmodern/config": "workspace:*",
+    "@types/node": "20",
+    "typescript": "^5.8.0",
+    "vitest": "^3.0.0"
+  }
+}

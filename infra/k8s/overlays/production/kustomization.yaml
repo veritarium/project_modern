@@ -1,0 +1,47 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: project-modern
+
+resources:
+  - ../../base
+  - hpa.yaml
+
+namePrefix: prod-
+
+commonLabels:
+  environment: production
+
+images:
+  - name: ghcr.io/projectmodern/evaluation
+    newTag: v2.0.0
+  - name: ghcr.io/projectmodern/semantic-search
+    newTag: v2.0.0
+
+patches:
+  - target:
+      kind: Deployment
+      name: evaluation-service
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 3
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: 1Gi
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: 1000m
+  - target:
+      kind: Deployment
+      name: semantic-search-service
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 3
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: 1Gi
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: 1000m

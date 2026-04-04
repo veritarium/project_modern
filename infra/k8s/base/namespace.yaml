@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: project-modern
+  labels:
+    name: project-modern
+    environment: production

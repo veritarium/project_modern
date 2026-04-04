@@ -1,11 +1,11 @@
 import * as vscode from 'vscode';
-import { ProjectModernAPI } from './api';
-import { PackageTreeProvider } from './providers/treeProvider';
+import type { ProjectModernAPI } from './api';
+import type { PackageTreeProvider } from './providers/treeProvider';
 
 export function registerCommands(
   api: ProjectModernAPI,
   treeProvider: PackageTreeProvider,
-  outputChannel: vscode.OutputChannel
+  _outputChannel: vscode.OutputChannel
 ): vscode.Disposable[] {
   const commands: vscode.Disposable[] = [];
 
@@ -14,28 +14,31 @@ export function registerCommands(
     vscode.commands.registerCommand('projectModern.search', async () => {
       const packageName = await vscode.window.showInputBox({
         prompt: 'Enter package name to evaluate',
-        placeHolder: 'e.g., react, lodash, express'
+        placeHolder: 'e.g., react, lodash, express',
       });
 
       if (!packageName) return;
 
-      await vscode.window.withProgress({
-        location: vscode.ProgressLocation.Notification,
-        title: `Evaluating ${packageName}...`
-      }, async () => {
-        try {
-          const data = await api.evaluateTool('npm', packageName);
-          
-          if (!data) {
-            vscode.window.showWarningMessage(`Package "${packageName}" not found`);
-            return;
-          }
+      await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: `Evaluating ${packageName}...`,
+        },
+        async () => {
+          try {
+            const data = await api.evaluateTool('npm', packageName);
 
-          showPackageDetails(data);
-        } catch (error) {
-          vscode.window.showErrorMessage(`Error: ${error}`);
+            if (!data) {
+              vscode.window.showWarningMessage(`Package "${packageName}" not found`);
+              return;
+            }
+
+            showPackageDetails(data);
+          } catch (error) {
+            vscode.window.showErrorMessage(`Error: ${error}`);
+          }
         }
-      });
+      );
     })
   );
 
@@ -48,45 +51,50 @@ export function registerCommands(
         return;
       }
 
-      await vscode.window.withProgress({
-        location: vscode.ProgressLocation.Notification,
-        title: 'Evaluating project dependencies...'
-      }, async (progress) => {
-        try {
-          const results = [];
-          
-          for (const folder of workspaceFolders) {
-            const packageJson = require(require('path').join(folder.uri.fsPath, 'package.json'));
-            const deps = {
-              ...packageJson.dependencies,
-              ...packageJson.devDependencies
-            };
+      await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: 'Evaluating project dependencies...',
+        },
+        async (progress) => {
+          try {
+            const results = [];
 
-            const depNames = Object.keys(deps);
-            let evaluated = 0;
+            for (const folder of workspaceFolders) {
+              const packageJson = require(
+                require('node:path').join(folder.uri.fsPath, 'package.json')
+              );
+              const deps = {
+                ...packageJson.dependencies,
+                ...packageJson.devDependencies,
+              };
 
-            for (const name of depNames) {
-              progress.report({ 
-                increment: 100 / depNames.length,
-                message: `(${++evaluated}/${depNames.length}) ${name}`
-              });
+              const depNames = Object.keys(deps);
+              let evaluated = 0;
 
-              try {
-                const data = await api.evaluateTool('npm', name);
-                if (data) {
-                  results.push(data);
+              for (const name of depNames) {
+                progress.report({
+                  increment: 100 / depNames.length,
+                  message: `(${++evaluated}/${depNames.length}) ${name}`,
+                });
+
+                try {
+                  const data = await api.evaluateTool('npm', name);
+                  if (data) {
+                    results.push(data);
+                  }
+                } catch (_error) {
+                  // Skip failed evaluations
                 }
-              } catch (error) {
-                // Skip failed evaluations
               }
             }
-          }
 
-          showProjectSummary(results);
-        } catch (error) {
-          vscode.window.showErrorMessage(`Error: ${error}`);
+            showProjectSummary(results);
+          } catch (error) {
+            vscode.window.showErrorMessage(`Error: ${error}`);
+          }
         }
-      });
+      );
     })
   );
 
@@ -103,31 +111,37 @@ export function registerCommands(
     vscode.commands.registerCommand('projectModern.compare', async () => {
       const input = await vscode.window.showInputBox({
         prompt: 'Enter packages to compare (comma-separated)',
-        placeHolder: 'e.g., react, vue, angular'
+        placeHolder: 'e.g., react, vue, angular',
       });
 
       if (!input) return;
 
-      const packages = input.split(',').map(p => p.trim()).filter(p => p);
-      
+      const packages = input
+        .split(',')
+        .map((p) => p.trim())
+        .filter((p) => p);
+
       if (packages.length < 2) {
         vscode.window.showWarningMessage('Please enter at least 2 packages to compare');
         return;
       }
 
-      await vscode.window.withProgress({
-        location: vscode.ProgressLocation.Notification,
-        title: 'Comparing packages...'
-      }, async () => {
-        try {
-          const tools = packages.map(name => ({ platform: 'npm', name }));
-          const data = await api.compareTools(tools);
-          
-          showComparison(data);
-        } catch (error) {
-          vscode.window.showErrorMessage(`Error: ${error}`);
+      await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: 'Comparing packages...',
+        },
+        async () => {
+          try {
+            const tools = packages.map((name) => ({ platform: 'npm', name }));
+            const data = await api.compareTools(tools);
+
+            showComparison(data);
+          } catch (error) {
+            vscode.window.showErrorMessage(`Error: ${error}`);
+          }
         }
-      });
+      );
     })
   );
 
@@ -136,7 +150,7 @@ export function registerCommands(
     vscode.commands.registerCommand('projectModern.openDashboard', () => {
       const config = vscode.workspace.getConfiguration('projectModern');
       const apiUrl = config.get('apiUrl') as string;
-      
+
       // Open the demo HTML file or API docs
       vscode.env.openExternal(vscode.Uri.parse(`${apiUrl}/tools/popular`));
     })
@@ -154,7 +168,7 @@ export function registerCommands(
 
 function showPackageDetails(data: any) {
   const eval_ = data.evaluation;
-  
+
   const panel = vscode.window.createWebviewPanel(
     'projectModern.packageDetails',
     `${data.name} - Project Modern`,
@@ -367,26 +381,34 @@ function showProjectSummary(results: any[]) {
       <div class="section">
         <h2>🏆 Top 5 Packages</h2>
         <ul class="package-list">
-          ${top5.map((r, i) => `
+          ${top5
+            .map(
+              (r, i) => `
             <li>
               <span class="package-name">${i + 1}. ${r.name}</span>
               <span class="package-score ${r.evaluation.composite >= 8 ? 'high' : r.evaluation.composite >= 6 ? 'medium' : 'low'}">
                 ${r.evaluation.composite.toFixed(1)}
               </span>
             </li>
-          `).join('')}
+          `
+            )
+            .join('')}
         </ul>
       </div>
 
       <div class="section">
         <h2>⚠️ Needs Attention</h2>
         <ul class="package-list">
-          ${bottom5.map((r, i) => `
+          ${bottom5
+            .map(
+              (r, _i) => `
             <li>
               <span class="package-name">${r.name}</span>
               <span class="package-score low">${r.evaluation.composite.toFixed(1)}</span>
             </li>
-          `).join('')}
+          `
+            )
+            .join('')}
         </ul>
       </div>
     </body>
@@ -463,7 +485,9 @@ function showComparison(data: any) {
           </tr>
         </thead>
         <tbody>
-          ${data.results.map((r: any, i: number) => `
+          ${data.results
+            .map(
+              (r: any, i: number) => `
             <tr>
               <td class="rank rank-${i + 1}">${i + 1}</td>
               <td><strong>${r.name}</strong></td>
@@ -475,7 +499,9 @@ function showComparison(data: any) {
               <td>${r.evaluation.breakdown.maintenance.toFixed(1)}</td>
               <td>${r.evaluation.breakdown.popularity.toFixed(1)}</td>
             </tr>
-          `).join('')}
+          `
+            )
+            .join('')}
         </tbody>
       </table>
     </body>

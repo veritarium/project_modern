@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { ProjectModernAPI } from '../api';
+import type { ProjectModernAPI } from '../api';
 
 export class DiagnosticsProvider {
   private diagnosticCollection: vscode.DiagnosticCollection;
@@ -19,7 +19,10 @@ export class DiagnosticsProvider {
     }
 
     // Find all package.json files in the workspace
-    const packageJsonFiles = await vscode.workspace.findFiles('**/package.json', '**/node_modules/**');
+    const packageJsonFiles = await vscode.workspace.findFiles(
+      '**/package.json',
+      '**/node_modules/**'
+    );
 
     for (const file of packageJsonFiles) {
       try {
@@ -43,13 +46,13 @@ export class DiagnosticsProvider {
       const packageJson = JSON.parse(text);
       const dependencies = {
         ...packageJson.dependencies,
-        ...packageJson.devDependencies
+        ...packageJson.devDependencies,
       };
 
-      for (const [name, version] of Object.entries(dependencies)) {
+      for (const [name, _version] of Object.entries(dependencies)) {
         try {
           const data = await this.api.evaluateTool('npm', name);
-          
+
           if (data && data.evaluation.composite < minimumScore) {
             const range = this.findDependencyRange(document, name);
             if (range) {
@@ -57,18 +60,21 @@ export class DiagnosticsProvider {
               diagnostics.push(diagnostic);
             }
           }
-        } catch (error) {
+        } catch (_error) {
           // Skip packages that can't be evaluated
         }
       }
-    } catch (error) {
+    } catch (_error) {
       // Invalid JSON
     }
 
     return diagnostics;
   }
 
-  private findDependencyRange(document: vscode.TextDocument, packageName: string): vscode.Range | null {
+  private findDependencyRange(
+    document: vscode.TextDocument,
+    packageName: string
+  ): vscode.Range | null {
     const text = document.getText();
     const lines = text.split('\n');
 
@@ -93,9 +99,12 @@ export class DiagnosticsProvider {
     minimumScore: number
   ): vscode.Diagnostic {
     const score = data.evaluation.composite;
-    const severity = score < 4 ? vscode.DiagnosticSeverity.Error :
-                     score < minimumScore ? vscode.DiagnosticSeverity.Warning :
-                     vscode.DiagnosticSeverity.Information;
+    const severity =
+      score < 4
+        ? vscode.DiagnosticSeverity.Error
+        : score < minimumScore
+          ? vscode.DiagnosticSeverity.Warning
+          : vscode.DiagnosticSeverity.Information;
 
     const diagnostic = new vscode.Diagnostic(
       range,
@@ -115,7 +124,7 @@ export class DiagnosticsProvider {
             new vscode.Position(0, 0)
           ),
           'View repository'
-        )
+        ),
       ];
     }
 

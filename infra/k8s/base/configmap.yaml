@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: project-modern-config
+  namespace: project-modern
+data:
+  # Evaluation Service
+  EVALUATION_PORT: "3000"
+  SCORECARD_ENABLED: "false"
+  CACHE_TTL: "3600000"
+  
+  # Semantic Search Service
+  SEMANTIC_SEARCH_PORT: "3001"
+  EMBEDDING_MODEL: "text-embedding-3-small"
+  EMBEDDING_DIMENSION: "1536"
+  
+  # Redis
+  REDIS_URL: "redis://redis:6379"
+  
+  # Database
+  DATABASE_URL: "postgresql://projectmodern:$(POSTGRES_PASSWORD)@postgres:5432/projectmodern"
