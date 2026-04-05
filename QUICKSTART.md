@@ -1,317 +1,128 @@
-# Project Modern 2026 - Quick Start Checklist
+# Project Modern - Quick Start
 
-> **Get from 0 to development in 30 minutes**
+Get up and running in 5 minutes.
 
 ---
 
 ## Prerequisites
 
-- [ ] Node.js 20+ installed (`node --version`)
-- [ ] pnpm 10+ installed (`pnpm --version`)
-- [ ] Git configured
-- [ ] GitHub CLI (optional but recommended)
+- Node.js 20+
+- pnpm 10+ (`corepack enable`)
+- Docker & Docker Compose
 
 ---
 
-## Step 1: Foundation Setup (10 minutes)
-
-### 1.1 Initialize pnpm Workspace
+## Setup
 
 ```bash
-# In project root
-corepack enable
-corepack prepare pnpm@10.0.0 --activate
-
-# Create workspace file
-cat > pnpm-workspace.yaml << 'EOF'
-packages:
-  - 'apps/*'
-  - 'packages/*'
-  - 'services/*'
-  - 'extensions/*'
-EOF
-```
-
-### 1.2 Root Package.json
-
-```bash
-cat > package.json << 'EOF'
-{
-  "name": "@projectmodern/root",
-  "private": true,
-  "version": "2.0.0",
-  "packageManager": "pnpm@10.0.0",
-  "scripts": {
-    "build": "turbo build",
-    "dev": "turbo dev",
-    "test": "turbo test",
-    "lint": "biome check .",
-    "format": "biome format --write .",
-    "typecheck": "turbo typecheck"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "^1.5.0",
-    "turbo": "^2.9.0",
-    "typescript": "^5.8.0"
-  }
-}
-EOF
-```
-
-### 1.3 Install Dependencies
-
-```bash
+# 1. Install dependencies
 pnpm install
+
+# 2. Build all packages
+pnpm turbo build
+
+# 3. Start local services
+docker-compose up -d
 ```
+
+Services available:
+- Evaluation API: http://localhost:3000
+- Semantic Search: http://localhost:3001
+- PostgreSQL: localhost:5432
+- Redis: localhost:6379
 
 ---
 
-## Step 2: Configure Tools (10 minutes)
-
-### 2.1 Biome Configuration
+## Development Commands
 
 ```bash
-cat > biome.json << 'EOF'
-{
-  "$schema": "https://biomejs.dev/schemas/1.5.3/schema.json",
-  "organizeImports": { "enabled": true },
-  "linter": {
-    "enabled": true,
-    "rules": { "recommended": true }
-  },
-  "formatter": {
-    "enabled": true,
-    "formatWithErrors": true,
-    "indentStyle": "space",
-    "indentWidth": 2
-  },
-  "vcs": {
-    "enabled": true,
-    "clientKind": "git",
-    "useIgnoreFile": true
-  }
-}
-EOF
-```
+# Type check
+pnpm turbo typecheck
 
-### 2.2 Turborepo Configuration
+# Run tests
+pnpm turbo test
 
-```bash
-cat > turbo.json << 'EOF'
-{
-  "$schema": "https://turbo.build/schema.json",
-  "globalEnv": ["NODE_ENV", "DATABASE_URL", "REDIS_URL"],
-  "tasks": {
-    "build": {
-      "dependsOn": ["^build"],
-      "outputs": [".next/**", "dist/**"]
-    },
-    "test": { "dependsOn": ["build"] },
-    "lint": {},
-    "typecheck": {},
-    "dev": { "cache": false, "persistent": true }
-  }
-}
-EOF
-```
+# Lint
+pnpm turbo lint
 
-### 2.3 TypeScript Base Config
-
-```bash
-mkdir -p packages/config
-cat > packages/config/tsconfig.base.json << 'EOF'
-{
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "lib": ["ES2022"],
-    "strict": true,
-    "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true,
-    "noImplicitReturns": true,
-    "erasableSyntaxOnly": true,
-    "verbatimModuleSyntax": true,
-    "declaration": true,
-    "sourceMap": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
-  }
-}
-EOF
-```
-
----
-
-## Step 3: Migrate Existing Code (10 minutes)
-
-### 3.1 Create Directory Structure
-
-```bash
-mkdir -p apps/{api,web,cli}
-mkdir -p packages/{types,api-client,config}
-mkdir -p services/{evaluation,semantic-search}
-mkdir -p extensions/vscode
-```
-
-### 3.2 Move Existing Code
-
-```bash
-# Move API (temporarily - will refactor later)
-cp -r spikes/scorecard-integration/* services/evaluation/
-rm -rf services/evaluation/node_modules services/evaluation/package-lock.json
-
-# Move VS Code extension
-cp -r extensions/vscode/* extensions/vscode/  # already in place
-```
-
-### 3.3 Update Evaluation Service Package.json
-
-```bash
-cat > services/evaluation/package.json << 'EOF'
-{
-  "name": "@projectmodern/evaluation-service",
-  "version": "2.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "node --watch src/server.js",
-    "start": "node src/server.js",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest"
-  },
-  "dependencies": {
-    "@projectmodern/types": "workspace:*",
-    "fastify": "^4.26.2",
-    "node-fetch": "^3.3.2",
-    "ioredis": "^5.3.2"
-  },
-  "devDependencies": {
-    "@types/node": "^20.0.0",
-    "typescript": "^5.8.0",
-    "vitest": "^3.0.0"
-  }
-}
-EOF
-```
-
----
-
-## Step 4: First Development Run
-
-### 4.1 Install Workspace Dependencies
-
-```bash
-pnpm install
-```
-
-### 4.2 Run Linting
-
-```bash
-# Should show no errors after migration
-pnpm lint
-
-# Auto-fix any issues
+# Format code
 pnpm format
+
+# Start web dashboard only
+pnpm --filter @projectmodern/web dev
 ```
 
-### 4.3 Start Development
+---
+
+## Using the CLI
 
 ```bash
-# Start all services
-pnpm dev
+# Evaluate a package
+pnpm --filter @projectmodern/cli start search react
 
-# Or individually
-pnpm --filter @projectmodern/evaluation-service dev
+# Compare packages
+pnpm --filter @projectmodern/cli start compare react vue
+
+# Audit project dependencies
+pnpm --filter @projectmodern/cli start audit
 ```
 
 ---
 
-## Verification Checklist
+## API Examples
 
-After completing the above:
+```bash
+# Health check
+curl http://localhost:3000/health
 
-- [ ] `pnpm install` completes without errors
-- [ ] `pnpm lint` shows no errors (or fixable warnings)
-- [ ] `pnpm build` succeeds
-- [ ] Services start with `pnpm dev`
-- [ ] API responds on http://localhost:3000/health
-- [ ] TypeScript compiles without errors (`pnpm typecheck`)
+# Evaluate a package
+curl http://localhost:3000/tools/npm/react
+
+# Search
+curl "http://localhost:3001/search?q=http+client"
+
+# Find similar tools
+curl http://localhost:3001/similar/npm/redux
+```
 
 ---
 
-## Next Steps
+## Environment Setup
 
-Once foundation is working:
+Create `.env.local` for local development:
 
-1. **Week 2**: Extract shared packages (`types`, `api-client`)
-2. **Week 3**: Migrate evaluation service to TypeScript
-3. **Week 4**: Upgrade semantic search to OpenAI embeddings
-4. **Week 5**: Create Next.js web app
-
-See [PLAN_2026.md](./PLAN_2026.md) for full details.
+```bash
+GITHUB_TOKEN=ghp_your_token
+LIBRARIES_IO_API_KEY=your_key
+OPENAI_API_KEY=sk-your_key
+```
 
 ---
 
 ## Troubleshooting
 
-### Issue: "Cannot find module"
-
+### Port conflicts
 ```bash
-# Clear and reinstall
-rm -rf node_modules pnpm-lock.yaml
-pnpm install
-```
-
-### Issue: Biome format errors
-
-```bash
-# Auto-fix all format issues
-pnpm format
-
-# Or check specific file
-pnpm biome check ./services/evaluation/src/server.js
-```
-
-### Issue: TypeScript errors
-
-```bash
-# Check specific package
-cd services/evaluation
-pnpm typecheck
-```
-
-### Issue: Port conflicts
-
-```bash
-# Check what's using port 3000
+# Check port usage
 lsof -i :3000
 
-# Kill process or change port in .env
+# Stop all services
+docker-compose down
 ```
 
----
-
-## Environment Variables Template
-
+### Rebuild after changes
 ```bash
-# .env.local (not committed)
-cat > .env.local << 'EOF'
-# Database
-DATABASE_URL=postgresql://user:pass@localhost:5432/projectmodern
-REDIS_URL=redis://localhost:6379
+pnpm turbo build --force
+```
 
-# APIs
-GITHUB_TOKEN=ghp_your_token_here
-LIBRARIES_IO_API_KEY=your_key_here
-OPENAI_API_KEY=sk-your_key_here
-
-# Auth (for web app)
-NEXTAUTH_SECRET=random_string_here
-NEXTAUTH_URL=http://localhost:3000
-EOF
+### Reset everything
+```bash
+docker-compose down -v
+rm -rf node_modules pnpm-lock.yaml
+pnpm install
+pnpm turbo build
 ```
 
 ---
 
-**Ready to start!** 🚀
+**Ready to go!** See [STATUS.md](./STATUS.md) for current system status.
